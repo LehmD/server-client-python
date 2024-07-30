@@ -38,7 +38,10 @@ def main():
     )
     # other options shown in explore_workbooks: workbook.download, workbook.preview_image
 
-    parser.add_argument("--workbook", action="store_true")
+    content_type = parser.add_mutually_exclusive_group()
+    # default is 'view'
+    content_type.add_argument("--workbook", action="store_true")
+    content_type.add_argument("--custom-view", action="store_true")
 
     parser.add_argument("--file", "-f", help="filename to store the exported data")
     parser.add_argument("--filter", "-vf", metavar="COLUMN:VALUE", help="View filter to apply to the view")
@@ -50,12 +53,15 @@ def main():
     logging_level = getattr(logging, args.logging_level.upper())
     logging.basicConfig(level=logging_level)
 
+    print(args.site)
     tableau_auth = TSC.PersonalAccessTokenAuth(args.token_name, args.token_value, site_id=args.site)
     server = TSC.Server(args.server, use_server_version=True, http_options={"verify": False})
     with server.auth.sign_in(tableau_auth):
         print("Connected")
         if args.workbook:
             item = server.workbooks.get_by_id(args.resource_id)
+        elif args.custom_view:
+            item = server.custom_views.get_by_id(args.resource_id)
         else:
             item = server.views.get_by_id(args.resource_id)
 
@@ -69,9 +75,13 @@ def main():
         # the code automatically adapt for the type of export the user is doing.
         # We unroll that information into methods we can call, or objects we can create by using getattr()
         (populate_func_name, option_factory_name, member_name, extension) = args.type
-        populate = getattr(server.views, populate_func_name)
+        
         if args.workbook:
             populate = getattr(server.workbooks, populate_func_name)
+        elif args.custom_view:
+            populate = getattr(server.custom_views, populate_func_name)
+        else:        
+            populate = getattr(server.views, populate_func_name)
 
         option_factory = getattr(TSC, option_factory_name)
 

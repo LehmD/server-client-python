@@ -9,7 +9,8 @@ from tableauserverclient.filesys_helpers import get_file_object_size
 from tableauserverclient.server.endpoint.endpoint import QuerysetEndpoint, api
 from tableauserverclient.server.endpoint.exceptions import MissingRequiredFieldError
 from tableauserverclient.models import CustomViewItem, PaginationItem
-from tableauserverclient.server import RequestFactory, RequestOptions, ImageRequestOptions
+from tableauserverclient.server import RequestFactory, RequestOptions, \
+    CSVRequestOptions, ImageRequestOptions, PDFRequestOptions
 
 from tableauserverclient.helpers.logging import logger
 
@@ -90,10 +91,45 @@ class CustomViews(QuerysetEndpoint[CustomViewItem]):
         server_response = self.get_request(url, req_options)
         image = server_response.content
         return image
+        
 
-    """
-    Not yet implemented: pdf or csv exports
-    """
+    @api(version="3.23")
+    def populate_pdf(self, view_item: CustomViewItem, req_options: Optional["PDFRequestOptions"] = None) -> None:
+        if not view_item.id:
+            error = "Custom View item missing ID."
+            raise MissingRequiredFieldError(error)
+
+        def pdf_fetcher():
+            return self._get_view_pdf(view_item, req_options)
+
+        view_item._set_pdf(pdf_fetcher)
+        logger.info("Populated pdf for custom view (ID: {0})".format(view_item.id))
+
+    def _get_view_pdf(self, view_item: CustomViewItem, req_options: Optional["PDFRequestOptions"]) -> bytes:
+        url = "{0}/{1}/pdf".format(self.baseurl, view_item.id)
+        print(url)
+        server_response = self.get_request(url, req_options)
+        pdf = server_response.content
+        return pdf
+    
+    
+    @api(version="3.23")
+    def populate_csv(self, view_item: CustomViewItem, req_options: Optional["CSVRequestOptions"] = None) -> None:
+        if not view_item.id:
+            error = "Custom View item missing ID."
+            raise MissingRequiredFieldError(error)
+
+        def csv_fetcher():
+            return self._get_view_csv(view_item, req_options)
+
+        view_item._set_csv(csv_fetcher)
+        logger.info("Populated csv for custom view (ID: {0})".format(view_item.id))
+
+    def _get_view_csv(self, view_item: CustomViewItem, req_options: Optional["CSVRequestOptions"]) -> bytes:
+        url = "{0}/{1}/data".format(self.baseurl, view_item.id)
+        server_response = self.get_request(url, req_options)
+        csv = server_response.content
+        return csv
 
     @api(version="3.18")
     def update(self, view_item: CustomViewItem) -> Optional[CustomViewItem]:

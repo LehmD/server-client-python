@@ -1,8 +1,7 @@
 from datetime import datetime
-
 from defusedxml import ElementTree
 from defusedxml.ElementTree import fromstring, tostring
-from typing import Callable, Optional
+from typing import Callable, Optional, Iterator
 
 from .exceptions import UnpopulatedPropertyError
 from .user_item import UserItem
@@ -37,9 +36,6 @@ class CustomViewItem:
             owner_info = " owner='{}'".format(self._owner.name or self._owner.id or "unknown")
         return f"<CustomViewItem id={self.id} name=`{self.name}`{view_info}{wb_info}{owner_info}>"
 
-    def _set_image(self, image):
-        self._image = image
-
     @property
     def content_url(self) -> Optional[str]:
         return self._content_url
@@ -52,12 +48,36 @@ class CustomViewItem:
     def id(self) -> Optional[str]:
         return self._id
 
+    def _set_image(self, image):
+        self._image = image
+
+    def _set_pdf(self, pdf):
+        self._pdf = pdf
+
+    def _set_csv(self, csv):
+        self._csv = csv
+
     @property
     def image(self) -> bytes:
         if self._image is None:
             error = "View item must be populated with its png image first."
             raise UnpopulatedPropertyError(error)
         return self._image()
+    
+    @property
+    def pdf(self) -> bytes:
+        if self._pdf is None:
+            error = "View item must be populated with its pdf first."
+            raise UnpopulatedPropertyError(error)
+        return self._pdf()
+
+    @property
+    def csv(self) -> Iterator[bytes]:
+        if self._csv is None:
+            error = "View item must be populated with its csv first."
+            raise UnpopulatedPropertyError(error)
+        return self._csv()
+    
 
     @property
     def name(self) -> Optional[str]:
